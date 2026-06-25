@@ -1,0 +1,91 @@
+
+// RECEIVER - Robotic Hand (ESP32)
+// Wireless Robotic Hand via ESP-NOW
+
+
+#include <esp_now.h>
+#include <WiFi.h>
+#include <ESP32Servo.h>
+
+//Servo Pin Definitions
+#define SERVO_PIN_1  13   // Finger 1 (Pinky)
+#define SERVO_PIN_2  12   // Finger 2 (Ring)
+#define SERVO_PIN_3  14   // Finger 3 (Middle)
+#define SERVO_PIN_4  27   // Finger 4 (Index)
+#define SERVO_PIN_5  26   // Finger 5 (Thumb)
+
+Servo myServo1;
+Servo myServo2;
+Servo myServo3;
+Servo myServo4;
+Servo myServo5;
+
+// Data Structure 
+  int flex1;
+  int flex2;
+  int flex3;
+  int flex4;
+  int flex5;
+} GloveData;
+
+GloveData receivedData;
+
+// Callback: 
+void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
+  memcpy(&receivedData, incomingData, sizeof(receivedData));
+
+  // Write angles to servos
+  myServo1.write(receivedData.flex1);
+  myServo2.write(receivedData.flex2);
+  myServo3.write(receivedData.flex3);
+  myServo4.write(receivedData.flex4);
+  myServo5.write(receivedData.flex5);
+
+  // Debug output
+  Serial.printf("F1:%d  F2:%d  F3:%d  F4:%d  F5:%d\n",
+    receivedData.flex1, receivedData.flex2, receivedData.flex3,
+    receivedData.flex4, receivedData.flex5);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // Attach servos
+  myServo1.attach(SERVO_PIN_1);
+  myServo2.attach(SERVO_PIN_2);
+  myServo3.attach(SERVO_PIN_3);
+  myServo4.attach(SERVO_PIN_4);
+  myServo5.attach(SERVO_PIN_5);
+
+  // Set all servos to neutral position
+  myServo1.write(90);
+  myServo2.write(90);
+  myServo3.write(90);
+  myServo4.write(90);
+  myServo5.write(90);
+
+  // Init WiFi in station mode (required for ESP-NOW)
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+
+  // Print this board's MAC address ***
+  // Copy this and paste it into the Transmitter code below
+  Serial.print("RECEIVER MAC Address: ");
+  Serial.println(WiFi.macAddress());
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW init failed!");
+    return;
+  }
+
+  // Register receive callback
+  esp_now_register_recv_cb(OnDataRecv);
+
+  Serial.println("Receiver ready. Waiting for glove data...");
+}
+
+void loop() {
+  // Nothing needed here — ESP-NOW uses callbacks
+  delay(10);
+}
